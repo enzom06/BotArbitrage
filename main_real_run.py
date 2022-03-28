@@ -21,14 +21,14 @@ def clearConsole():
 
 
 def update_balance():
-    global dico_balance
+    global dico_balance, lst_usd
     b = client.get_account()['balances']
     for asset in b:
-        if float(asset['free']) != 0:
-            if asset['asset'] in dico_balance.keys():
-                dico_balance[asset['asset']] = float(asset['free'])
-            else:
-                dico_balance[asset['asset']] = float(asset['free'])
+        # if float(asset['free']) != 0 or asset in lst_usd:
+        if asset['asset'] in dico_balance.keys():
+            dico_balance[asset['asset']] = float(asset['free'])
+        else:
+            dico_balance[asset['asset']] = float(asset['free'])
 
 
 # clearConsole()
@@ -40,10 +40,12 @@ def init_dico():
 
     for i in range(len(tickers)):
         info = tickers[i]
-        for bannedToken in ['BULL', 'UP', 'DOWN', 'BEAR', 'BNB', 'FTT', 'EUR', 'GBP', 'AUD', 'BRL', 'TRY', 'KZT', 'HKD',
-                            'PEN', 'RUB', 'UAH', 'UGX', 'PHP',
+        for bannedToken in ['BNB', 'FTT', 'EUR', 'GBP', 'AUD', 'BRL', 'TRY', 'KZT', 'HKD', 'PEN', 'RUB', 'UAH', 'UGX', 'PHP',
                             'BKRW', 'NGN', 'BIDR', 'PAX', 'SUSD']:
-            if bannedToken in info['symbol'][:len(bannedToken)] or bannedToken in info['symbol'][len(bannedToken):]:
+            if bannedToken in info['symbol'][:len(info['symbol'])] or bannedToken in info['symbol'][:len(info['symbol'])]:
+                ban = True
+        for bannedToken in ['BULL', 'UP', 'DOWN', 'BEAR', 'SC']:
+            if bannedToken in info['symbol']:
                 ban = True
 
         if not ban and float(info['askQty']) != 0:
@@ -59,16 +61,54 @@ def get_dollar_path():
     dico = {'TUSD': {'USDT': False, 'BUSD': False},
             'DAI': {'BUSD': True, 'USDT': True},
             'USDC': {'BUSD': False, 'USDT': False},
-            'USDT': {'TUSD': True, 'DAI': False, 'USDC': True, 'USDP': True, 'UST': True, 'BUSD': True},
+            'USDT': {'DAI': False, 'USDC': True, 'USDP': True, 'UST': True, 'BUSD': True},  # 'TUSD': True,
             'USDP': {'BUSD': False, 'USDT': False},
             'UST': {'BUSD': False, 'USDT': False},
-            'BUSD': {'TUSD': False, 'DAI': False, 'USDC': True, 'USDT': False, 'USDP': True, 'UST': True}
+            'BUSD': {'DAI': False, 'USDC': True, 'USDT': False, 'USDP': True, 'UST': True}  # 'TUSD': False
             }
 
     return dico
 
-
+"""
+not working
 def initOrderBookUSD():
+    global lst_usd, dico_tickers, dico_min_val
+    TempOrderBook = {}
+    for usd in lst_usd:
+        for pair in dico_tickers:
+            if usd in pair:
+                ban = False
+                p = ''
+
+                if usd in pair[:len(pair) - len(usd)]:
+                    p = pair[:len(pair) - len(usd)]
+                elif usd in pair[len(usd):]:
+                    p = pair[len(usd):]
+                else:
+                    ban=True
+
+                # p = pair.replace(usd, '')
+                for u in lst_usd:
+                    if u in p:
+                        ban = True
+                if not ban:
+                    if usd not in TempOrderBook:
+                        TempOrderBook[usd] = {}
+                    TempOrderBook[usd][p] = dico_tickers[pair]  # can del symbol in dico
+                    TempOrderBook[usd][p]['min_val'] = float(dico_min_val[pair])
+    # dico inverse for find out
+    TempInverseOrderBookUSD = {}
+    for usd in TempOrderBook:
+        for token in TempOrderBook[usd]:
+            if token not in TempInverseOrderBookUSD.keys():
+                TempInverseOrderBookUSD[token] = []
+            if usd not in TempInverseOrderBookUSD[token]:
+                TempInverseOrderBookUSD[token].append(usd)
+
+    return TempOrderBook, TempInverseOrderBookUSD
+"""
+
+def initOrderBookUSD2():
     global lst_usd, dico_tickers
 
     dico_min_val = {}
@@ -114,24 +154,10 @@ def initOrderBookUSD():
 
     return TempOrderBook, TempInverseOrderBookUSD
 
-
 def initOrderBookToken():
-    global dico_tickers
+    global dico_tickers, lst_token, dico_min_val
     dico = {}
     # BTC/USDT #BTC/ETH
-
-    dico_min_val = {}
-    for i in client.get_exchange_info()['symbols']:
-        min_step = i['filters'][2]['minQty']
-        nb = int(min_step.find('1'))
-        if nb == -1:
-            dico_min_val[i['symbol']] = -9990
-        elif nb <= 0:
-            l = len(min_step.split('.')[0])
-            dico_min_val[i['symbol']] = l - 1
-        elif nb > 0:
-            dico_min_val[i['symbol']] = nb - 1
-    lst_token = get_token()
     # print(lst_token)
     for t in lst_token:
         dico[t] = {}
@@ -150,11 +176,49 @@ def initOrderBookToken():
     return dico
 
 
+def UpdateOrderBookToken():
+    global dico_tickers, lst_token, dico_min_val
+    dico = {}
+    dico_t = dico_tickers.keys()
+    # BTC/USDT #BTC/ETH
+    print(lst_token)
+    for t in lst_token:
+        dico[t] = {}
+    for Token in dico_t:  # ETH/BTC
+        for token in lst_token:
+            if token in Token[:len(token)] and str(Token).replace(token, '') in lst_token:
+                otherT = str(Token).replace(token, '')
+                ban = False
+                for usd in all_lst_usd:
+                    if usd in otherT:
+                        ban = True
+                if not ban:
+                    dico[token][otherT] = {'a': float(dico_tickers[Token]['a']),
+                                           'A': float(dico_tickers[Token]['A']),
+                                           'b': float(dico_tickers[Token]['b']),
+                                           'B': float(dico_tickers[Token]['B']),
+                                           'min_val': int(dico_min_val[Token])}
+
+            elif token in Token[len(token):] and str(Token).replace(token, '') in lst_token:
+                nb = len(Token)-len(token)
+                otherT = Token[:nb]
+                # print(dico.keys())
+                #print('Token', Token, 'otherT', otherT, 'token', token, 'cut', Token[len(token):], 'len', len(token), len(Token), Token[:nb])
+                dico[otherT][token] = {'a': float(dico_tickers[Token]['a']),
+                                       'A': float(dico_tickers[Token]['A']),
+                                       'b': float(dico_tickers[Token]['b']),
+                                       'B': float(dico_tickers[Token]['B']),
+                                       'min_val': int(dico_min_val[Token])}
+
+
+    return dico
+
+
 # print(client.futures_create_order(symbol='', quantity=str(0.001), side='BUY',
 #                            type='MARKET'))
 # print(client.futures_create_order(symbol='', quantity=str(0.001), side='SELL',
 #                            type='MARKET'))
-def get_min_val():
+"""def get_min_val():
     dico = {}
     for i in client.get_exchange_info()['symbols']:
         min_step = i['filters'][2]['minQty']
@@ -167,7 +231,7 @@ def get_min_val():
         elif nb > 0:
             dico[i['symbol']] = nb - 1
     return dico
-
+"""
 
 def min_pos(min_val):
     return 1 * 10 ** (-min_val)
@@ -193,7 +257,7 @@ def toNum(_val, p=-9990, for_trade=False):
 
 def move_liquidity(usd, amount):
     global nb
-    update_balance()
+    # update_balance()
     amount_to_get = toNum(amount * 1.1 - dico_balance[usd], 0)
     for Kusd in dico_dollar[usd].keys():
 
@@ -267,16 +331,16 @@ def trade(pos):
         min_liquidity = l_middle * price_in
     if min_liquidity > l_out:
         min_liquidity = l_out
-    if min_liquidity <= 500:  # choisit arbitrairement
+    if min_liquidity <= 50:  # choisit arbitrairement
         # print('OUT : liquidity to low', min_liquidity)
         dico_err['low_liquidity'] += 1
         return False
-    else:
+    """else:
         if assets >= min_liquidity * 0.7:
             assets = toNum(min_liquidity * 0.7)
         else:
-            assets = toNum(assets * 0.9)
-        # print('min_liquidity', min_liquidity)
+            assets = toNum(assets * 0.9)"""
+    # print('min_liquidity', min_liquidity)
     # print('asset f', assets)
 
     # #nb_token_m1 = toNum(assets / price_in, pos['min_val_usd_token1'])
@@ -300,9 +364,9 @@ def trade(pos):
         temp_m1 = toNum(nb * min_pos(pos['min_val_usd_token1']))
         temp_asset = toNum(temp_m1 * price_in)
         if inverse_pair:
-            temp_m2 = toNum(temp_m1 * price_middle, min_val_t2)
+            temp_m2 = toNum(temp_m1 * price_middle, min_val_t2)  # sell
         else:
-            temp_m2 = toNum(temp_m1 / price_middle, min_val_t2)
+            temp_m2 = toNum(temp_m1 / price_middle, min_val_t2)  # buy
 
         temp_asset_out = toNum(temp_m2 * price_out)
 
@@ -324,7 +388,7 @@ def trade(pos):
     assets = lst_in_usd[0][0]
     nb_token_m1 = lst_in_usd[0][1]
     nb_token_m2 = lst_in_usd[0][2]
-    result = lst_in_usd[0][3]
+    result = lst_in_usd[0][3] - 3 * 0.075 * lst_in_usd[0][0] / 100
 
     # print('asset', assets, 'm1', nb_token_m1, 'm2', nb_token_m2, 'result', result, 'pos', pos)
     # print('false:', end=' ')
@@ -333,7 +397,7 @@ def trade(pos):
         # print(f"assets : {pos['usd']} : {round(assets, 8)} : liquidity minimum, {round(min_liquidity, 3)} : estimate earning {round(result - assets, 8)}")
         return False
 
-    if result - assets >= 0.0751 * result / 100:
+    if result - assets >= 0.0755 * result / 100:
         if dico_balance[pos['usd']] < assets:
             if not move_liquidity(pos['usd'], assets * 1.1):
                 if pos['usd'] not in dico_err['balance'].keys():
@@ -345,7 +409,7 @@ def trade(pos):
                 nb_ += 1
                 # result -= 0.075
 
-    elif result - assets < 0.0751 * result / 100:
+    elif result - assets < 0.0755 * result / 100:
         if assets < 15:
             dico_err['result'] += 1
             # print(f"assets : {pos['usd']} : {round(assets, 8)} : liquidity minimum, {round(min_liquidity, 3)} : estimate earning {round(result - assets, 8)}")
@@ -356,15 +420,23 @@ def trade(pos):
         else:
             dico_err['balance'][pos['usd']] += 1
         return False
+
     # print(f"assets/result : {pos['usd']}: {assets}/{result}\nliquidity minimum {min_liquidity}\nestimate earning {result - assets}")
 
     # ordre buy order
+    if price_in != float(OrderBookUSD[pos['usd']][pos['token1']]['a']) or price_out != float(
+            OrderBookUSD[pos['usdOut']][pos['token2']]['b']):
+        return False
+
+    print('supposed assets/m1/m2/out', assets, nb_token_m1, nb_token_m2, result)
+    print('price', pos['token1'], price_in, price_middle, pos['token2'], price_out, '\nusd/usd', pos['usd'],
+          pos['usdOut'])
     s = pos['token1'] + pos['usd']
     qty = nb_token_m1
     # print('1:buy', s, qty)
     client.order_market_buy(symbol=s, quantity=qty)
     qty_in = qty
-    # sleep(0.001)
+    # sleep(0.05)
     update_balance()
     balance = dico_balance[pos['token1']]
     # while balance < 0.95 * qty:
@@ -380,13 +452,13 @@ def trade(pos):
     else:
         # print('pair', pos['token2'] + pos['token1'], end=' ')
         # price_middle = float(client.get_(symbol=pos['token2'] + pos['token1'])['askPrice'])
-        price_middle = dico_tickers[pos['token2'] + pos['token1']['a']]
+        price_middle = OrderBookToken[pos['token2']][pos['token1']]['a']
         qty = toNum(balance / price_middle, min_val_t2, True)
         # ('2:buy', qty)
         client.order_market_buy(symbol=pos['token2'] + pos['token1'], quantity=qty, price=price_middle)
         qty_mid = qty
 
-    # sleep(0.05)
+    # sleep(0.01)
     update_balance()
     balance = dico_balance[pos['token2']]
     balance_out = dico_balance[pos['usdOut']]
@@ -399,17 +471,22 @@ def trade(pos):
     # print('3:sell', qty)
     final_pos = client.order_market_sell(symbol=pos['token2'] + pos['usdOut'], quantity=qty)
     # print('earning', float(final_pos['cummulativeQuoteQty']) - assets)
-
+    # sleep(0.1)
     # total_earn += float(final_pos['cummulativeQuoteQty']) - assets
     update_balance()
     nb_ += 1
-    total_earn += float(dico_balance[pos['usdOut']]) - assets
+    total_earn += float(final_pos['cummulativeQuoteQty']) - assets - (0.0750 * float(final_pos['cummulativeQuoteQty']) / 100) - (2 * 0.0750 * assets / 100)
     # total_earn += result - assets
     print('COMPLETE')
     with open('log.txt', 'a') as fic:
-        fic.write(f";asset:{assets}:m1:{nb_token_m1}:m2:{nb_token_m2}:result:{result}:pos:{pos}:price_in:{price_in}:price_middle:{price_middle}:price_out:{price_out}assets/result:{pos['usd']}:{assets}/{result}:liquidity minimum:{min_liquidity}:estimate earning:{result - assets}:qty_in:{qty_in}:qty_mid:{qty_mid}:qty_out{qty}")
+        fic.write(
+            f"\n;asset:{assets}:m1:{nb_token_m1}:m2:{nb_token_m2}:result:{result}:qty_in:{qty_in}:qty_mid:{qty_mid}:qty_out{qty}:price_in:{price_in}:price_middle:{price_middle}:price_out:{price_out}assets/result:{assets}/{result}:minimum liquidity:{min_liquidity}:estimate earning:{result - assets}:pos:{pos}")
     # sleep(999999999999999999)
     # -- -- -- --
+    nb_ += 1
+    # total_earn += result - assets
+    print('COMPLETE')
+    sleep(10)
     """
     actual_balance = client.get_asset_balance(asset=pos['usdOut'])['free']
     if final_pos['cummulativeQuoteQty'] - assets > actual_balance * 0.0750 / 100:
@@ -441,21 +518,30 @@ def get_token():
     _nouv = ''
     lst_symbol = []
     for keys in dico_tickers.keys():
-        for i2 in ['TUSD', 'DAI', 'USDC', 'USDT', 'USDP', 'UST', 'BUSD', 'USDS']:
-            if i2 in keys:
+        #if 'AION' in keys:
+        #    print(keys)
+        _nouv = keys
+        for usd in ['TUSD', 'DAI', 'USDC', 'USDT', 'USDP', 'UST', 'BUSD', 'USDS']:
+            if usd in _nouv:
                 # print(i['symbol'][len(i2):])
                 # if i['symbol'][len(i2):] == i:
                 # the light <-> bug
-                _nouv = keys.replace(i2, '')
+                _nouv = _nouv.replace(usd, '')
 
                 # else:
                 #    _nouv = ''
                 if _nouv in ['TUSD', 'DAI', 'USDC', 'USDT', 'USDP', 'UST', 'BUSD', 'USDS']:
                     _nouv = ''
         for i2 in ['EUR', 'GBP', 'AUD', 'BRL', 'TRY', 'KZT', 'HKD', 'PEN', 'RUB', 'UAH', 'UGX', 'PHP', 'USD', 'BKRW',
-                   'NGN', 'BIDR', 'PAX', 'SUSD']:
+                   'NGN', 'BIDR', 'PAX', 'SUSD', 'DGT']:
             if i2 in _nouv:
                 _nouv = ''
+
+        for i2 in ['BTC', 'ETH']:
+            if i2 in keys[len(i2):]:
+                _nouv = _nouv[:len(keys)-len(i2)]
+        #if 'NBT' in _nouv:
+        #    print('aa', keys, _nouv, len(_nouv))
         if _nouv != '' and len(_nouv) > 1:
             if _nouv not in lst_symbol:
                 lst_symbol.append(_nouv)
@@ -589,9 +675,9 @@ def calc_benef():
     buy_part = 100
     # t_ = time()
     lst_pos = []
-
-    for usd in OrderBookUSD.keys():
-        for token1 in OrderBookUSD[usd].keys():
+    print(OrderBookUSD)
+    for usd in OrderBookUSD:
+        for token1 in OrderBookUSD[usd]:
             lst_pos.append(
                 {'amount': toNum(buy_part / float(OrderBookUSD[usd][token1]['a'])),
                  'usd': usd,
@@ -604,7 +690,7 @@ def calc_benef():
     new_lst_pos = []
     for i in range(len(lst_pos)):
         # token1 pos['token1']
-        for token2 in OrderBookToken[lst_pos[i]['token1']].keys():
+        for token2 in OrderBookToken[lst_pos[i]['token1']]:
             new_lst_pos.append(
                 {'amount': toNum(lst_pos[i]['amount'] * float(OrderBookToken[lst_pos[i]['token1']][token2]['b'])),
                  'usd': lst_pos[i]['usd'],
@@ -618,7 +704,7 @@ def calc_benef():
     lst_pos = new_lst_pos
     new_lst_pos = []
     for i in range(len(lst_pos)):
-        # token1 pos['token1'] n
+        # token1 pos['token1']
         for usd in InverseOrderBookUSD[lst_pos[i]['token2']]:
             new_lst_pos.append(
                 {'amount': (toNum(
@@ -690,9 +776,9 @@ def main():
 
 
 # VEN', 'NULS', 'VET', 'BCHSV', 'BNC', 'LINK', 'WAVES', 'BTT', 'ONG', 'HOT', 'ZIL', 'ZRX',
-with open('lst_token.txt', 'r') as f:
+"""with open('lst_token.txt', 'r') as f:
     lst_token = str(f.readline()).split(',')
-
+"""
 
 # shuffle(lst_token)
 
@@ -721,9 +807,11 @@ def launch_scan_trade():
     clearConsole()
     print("nb d'opportunité saisi", nb_, 'list_dico_err ', dico_err)
     # print('time:', asctime())
-    print('total earn', total_earn, 'rentabilité (estimé)', round(total_earn / ((time() - t_start) / 3600), 8), '$/hour',
+    print('total earn', total_earn, '\n', round(total_earn / ((time() - t_start) / 3600), 8),
+          '$/hour',
           round(total_earn / ((time() - t_start) / 86400), 8), '$/day',
-          round(total_earn / ((time() - t_start) / (86400 * 30)), 8), '$/mounth', 'temps de fonctionnement', round((time() - t_start) / 3600, 3), 'h')
+          round(total_earn / ((time() - t_start) / (86400 * 30)), 8), '$/mounth',
+          round((time() - t_start) / 3600, 3), 'h')
     print('--' * 10)
 
 
@@ -790,14 +878,18 @@ class Server(Thread):
         Thread.__init__(self)
 
     def run(self):
-        global dico_err
+        global dico_err, dico_tickers, OrderBookUSD, InverseOrderBookUSD, OrderBookToken
         sleep(5)
         while True:
+            dico_tickers = init_dico()
+            OrderBookUSD, InverseOrderBookUSD = initOrderBookUSD()
+            OrderBookToken = UpdateOrderBookToken()
             launch_scan_trade()
             # print('erreur', dico_err)
             # print('wait')
             dico_err = {'balance': {}, 'low_liquidity': 0, 'result': 0, 'not_pile': 0}
             # update_balance()
+            sleep(3)
 
 
 if __name__ == "__main__":
@@ -811,17 +903,27 @@ if __name__ == "__main__":
     dico_dollar = get_dollar_path()
     nb_ = 0
 
-    """
 
-    deux choix:
+    dico_min_val = {}
+    for i in client.get_exchange_info()['symbols']:
+        min_step = i['filters'][2]['minQty']
+        nb = int(min_step.find('1'))
+        if nb > 0:
+            dico_min_val[i['symbol']] = nb - 1
+            # print('dico val', [i['symbol']], min_step, nb-1)
 
-    soit on essaye de faire plein de trade à faible rendement
+        elif nb <= 0:
+            l = len(min_step.split('.')[0])
+            dico_min_val[i['symbol']] = -l + 1
+            # print('dico val', i['symbol'], min_step, -l + 1)
+        # elif nb == 0:
+        #    dico_min_val[i['symbol']] = -9990
+        #    print('dico val', i['symbol'], min_step, -9990)
 
-    soit ont attendants des des gros coef
 
-    """
     min_earn = 1.001
     dico_tickers = init_dico()
+    lst_token = get_token()
     all_lst_usd = ['TUSD', 'DAI', 'USDC', 'USDT', 'USDP', 'UST', 'BUSD']
     lst_usd = ['DAI', 'USDC', 'USDT', 'USDP', 'UST', 'BUSD']
     # lst_usd = ['USDT', 'UST', 'BUSD']
@@ -831,13 +933,14 @@ if __name__ == "__main__":
     dico_err = {'balance': {}, 'low_liquidity': 0, 'result': 0, 'not_pile': 0}
 
     print('Orderbook load . . .')
-    OrderBookUSD, InverseOrderBookUSD = initOrderBookUSD()
-    OrderBookToken = initOrderBookToken()
-    # print('orderUSD', OrderBookUSD)
+    OrderBookUSD, InverseOrderBookUSD = initOrderBookUSD2()
+    OrderBookToken = UpdateOrderBookToken()
+    print('orderUSD', OrderBookUSD.keys())
     # print('order', OrderBookToken)
     # print('order', OrderBookToken['ETH'])
-    # print('InverseOrderBookUSD', InverseOrderBookUSD)
-    # print('orderToken', OrderBookToken)
+    print('InverseOrderBookUSD', InverseOrderBookUSD)
+    print('orderToken', OrderBookToken.keys())
+
     sleep(2)
     # launch_scan_trade()
     t_start = time()
@@ -849,14 +952,14 @@ if __name__ == "__main__":
     update_balance()
 
     print('-- -- -- -- -- -- -- -- -- --')
-    print('lancement du websocket')
+    print('lancement')
     print('-- -- -- -- -- -- -- -- -- --')
     print('bonne chance')
     sleep(2)
     clearConsole()
     thread = Server()
     thread.start()
-    while True:
+    """while True:
         try:
             ws.run_forever()
         except Exception as err:
@@ -869,4 +972,4 @@ if __name__ == "__main__":
             sleep(2)
             print('fin erreur')
             pass
-        sleep(2)
+        sleep(2)"""

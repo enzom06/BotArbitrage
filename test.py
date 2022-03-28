@@ -375,14 +375,15 @@ def min_val():
 print('')
 print(min_val())
 """
-
+"""
 with open('log.txt', 'a') as fic:
     fic.write('b:')
+"""
 
 
 
-
-
+print('LOOMBTC'[3:])
+print('LOOMBTC'[:3])
 
 
 

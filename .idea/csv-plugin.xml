@@ -10,6 +10,13 @@
             </Attribute>
           </value>
         </entry>
+        <entry key="\binance_alerte.py">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
         <entry key="\check_binance.py">
           <value>
             <Attribute>
