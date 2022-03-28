@@ -630,6 +630,8 @@ def calc_benef(with_fee=True):
     #    base_in = out_dollar
     #    base_out = (base_in / askPriceBASE / askPrice) * askPriceBASE2
     # return base_in, base_out-base_in, base_out*100/base_in
+
+
 def main():
     global nb_, nb_out, nb_out2
     temp_nb = nb_
@@ -748,14 +750,16 @@ class Server(Thread):
 
 if __name__ == "__main__":
 
-    nb_out = 0
-    nb_out2 = 0
+    # SOCKET = "wss://stream.binance.com:9443/ws/!bookTicker"
+    # ws = websocket.WebSocketApp(SOCKET, on_open=on_open, on_close=on_close, on_message=on_message)
 
     dico_balance = {}
     total_earn = 0
     dico_dollar = get_dollar_path()
     nb_ = 0
 
+    nb_out = 0
+    nb_out2 = 0
 
     dico_min_val = {}
     for i in client.get_exchange_info()['symbols']:
@@ -801,3 +805,17 @@ if __name__ == "__main__":
     clearConsole()
     thread = Server()
     thread.start()
+    """while True:
+        try:
+            ws.run_forever()
+        except Exception as err:
+            print('erreur:', err)
+            sleep(2)
+            client = Client(api_key, api_secret, {"timeout": 20})
+            update_balance()
+            OrderBookUSD, InverseOrderBookUSD = initOrderBookUSD()
+            OrderBookToken = initOrderBookToken()
+            sleep(2)
+            print('fin erreur')
+            pass
+        sleep(2)"""
