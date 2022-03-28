@@ -109,19 +109,7 @@ def initOrderBookUSD():
 """
 
 def initOrderBookUSD2():
-    global lst_usd, dico_tickers
-
-    dico_min_val = {}
-    for i in client.get_exchange_info()['symbols']:
-        min_step = i['filters'][2]['minQty']
-        nb = int(min_step.find('1'))
-        if nb > 0:
-            dico_min_val[i['symbol']] = nb - 1
-            # print('dico val', [i['symbol']], min_step, nb-1)
-
-        elif nb <= 0:
-            l = len(min_step.split('.')[0])
-            dico_min_val[i['symbol']] = -l + 1
+    global lst_usd, dico_tickers, dico_min_val
             # print('dico val', i['symbol'], min_step, -l + 1)
         # elif nb == 0:
         #    dico_min_val[i['symbol']] = -9990
@@ -131,18 +119,33 @@ def initOrderBookUSD2():
         for pair in dico_tickers.keys():
             if usd in pair:
                 ban = False
-                p = pair.replace(usd, '')
-                for u in all_lst_usd:
-                    if p in u:
-                        ban = True
-                if not ban:
-                    if usd not in TempOrderBook.keys():
-                        TempOrderBook[usd] = {}
-                        TempOrderBook[usd][pair.replace(usd, '')] = dico_tickers[pair]  # can del symbol in dico
-                        TempOrderBook[usd][pair.replace(usd, '')]['min_val'] = float(dico_min_val[pair])
-                    else:
-                        TempOrderBook[usd][pair.replace(usd, '')] = dico_tickers[pair]  # can del symbol in dico
-                        TempOrderBook[usd][pair.replace(usd, '')]['min_val'] = float(dico_min_val[pair])
+                # p = pair.replace(usd, '')
+                if usd in pair[:len(pair)-len(usd)]:
+                    p = pair[len(usd):]
+                    for u in all_lst_usd:
+                        if p in u:
+                            ban = True
+                    if not ban:
+                        if usd not in TempOrderBook.keys():
+                            TempOrderBook[usd] = {}
+                            TempOrderBook[usd][pair.replace(usd, '')] = dico_tickers[pair]  # can del symbol in dico
+                            TempOrderBook[usd][pair.replace(usd, '')]['min_val'] = float(dico_min_val[pair])
+                        else:
+                            TempOrderBook[usd][pair.replace(usd, '')] = dico_tickers[pair]  # can del symbol in dico
+                            TempOrderBook[usd][pair.replace(usd, '')]['min_val'] = float(dico_min_val[pair])
+                elif usd in pair[len(usd):]:
+                    p = pair[:len(pair)-len(usd)]
+                    for u in all_lst_usd:
+                        if p in u:
+                            ban = True
+                    if not ban:
+                        if usd not in TempOrderBook.keys():
+                            TempOrderBook[usd] = {}
+                            TempOrderBook[usd][pair.replace(usd, '')] = dico_tickers[pair]  # can del symbol in dico
+                            TempOrderBook[usd][pair.replace(usd, '')]['min_val'] = float(dico_min_val[pair])
+                        else:
+                            TempOrderBook[usd][pair.replace(usd, '')] = dico_tickers[pair]  # can del symbol in dico
+                            TempOrderBook[usd][pair.replace(usd, '')]['min_val'] = float(dico_min_val[pair])
     # dico inverse for find out
     TempInverseOrderBookUSD = {}
     for usd in TempOrderBook:
@@ -181,7 +184,7 @@ def UpdateOrderBookToken():
     dico = {}
     dico_t = dico_tickers.keys()
     # BTC/USDT #BTC/ETH
-    print(lst_token)
+    # print(lst_token)
     for t in lst_token:
         dico[t] = {}
     for Token in dico_t:  # ETH/BTC
@@ -668,14 +671,14 @@ def get_other_token(_name):
 # print(get_arbitrage_possibilit y('XRP'))
 
 
-def calc_benef():
+def calc_benef(with_fee=True):
     global min_earn, nb_
     # bidPriceBASE, askPriceBASE, askPrice, bidPriceBASE2, askPriceBASE2
     # fait abstraction de la liquidité dispo
     buy_part = 100
     # t_ = time()
     lst_pos = []
-    print(OrderBookUSD)
+    # print(OrderBookUSD)
     for usd in OrderBookUSD:
         for token1 in OrderBookUSD[usd]:
             lst_pos.append(
@@ -706,23 +709,35 @@ def calc_benef():
     for i in range(len(lst_pos)):
         # token1 pos['token1']
         for usd in InverseOrderBookUSD[lst_pos[i]['token2']]:
-            new_lst_pos.append(
-                {'amount': (toNum(
-                    lst_pos[i]['amount'] * float(OrderBookUSD[usd][lst_pos[i]['token2']]['b'])) - (3 * 0.075 / 100 *
-                                                                                                   toNum(lst_pos[i][
-                                                                                                             'amount'] * float(
-                                                                                                       OrderBookUSD[
-                                                                                                           usd][
-                                                                                                           lst_pos[i][
-                                                                                                               'token2']][
-                                                                                                           'b'])))),
-                 'usd': lst_pos[i]['usd'],
-                 'token1': lst_pos[i]['token1'],
-                 'token2': lst_pos[i]['token2'],
-                 'usdOut': usd,
-                 'min_val_usd_token1': int(lst_pos[i]['min_val_usd_token1']),
-                 'min_val_token1_token2': int(lst_pos[i]['min_val_token1_token2']),
-                 'min_val_token2_usd': int(OrderBookUSD[usd][lst_pos[i]['token2']]['min_val'])})
+            if with_fee:
+                new_lst_pos.append(
+                    {'amount': (toNum(
+                        lst_pos[i]['amount'] * float(OrderBookUSD[usd][lst_pos[i]['token2']]['b'])) - (3 * 0.075 / 100 *
+                                                                                                       toNum(lst_pos[i][
+                                                                                                                 'amount'] * float(
+                                                                                                           OrderBookUSD[
+                                                                                                               usd][
+                                                                                                               lst_pos[i][
+                                                                                                                   'token2']][
+                                                                                                               'b'])))),
+                     'usd': lst_pos[i]['usd'],
+                     'token1': lst_pos[i]['token1'],
+                     'token2': lst_pos[i]['token2'],
+                     'usdOut': usd,
+                     'min_val_usd_token1': int(lst_pos[i]['min_val_usd_token1']),
+                     'min_val_token1_token2': int(lst_pos[i]['min_val_token1_token2']),
+                     'min_val_token2_usd': int(OrderBookUSD[usd][lst_pos[i]['token2']]['min_val'])})
+            else:
+                new_lst_pos.append(
+                    {'amount': (toNum(
+                        lst_pos[i]['amount'] * float(OrderBookUSD[usd][lst_pos[i]['token2']]['b']))),
+                     'usd': lst_pos[i]['usd'],
+                     'token1': lst_pos[i]['token1'],
+                     'token2': lst_pos[i]['token2'],
+                     'usdOut': usd,
+                     'min_val_usd_token1': int(lst_pos[i]['min_val_usd_token1']),
+                     'min_val_token1_token2': int(lst_pos[i]['min_val_token1_token2']),
+                     'min_val_token2_usd': int(OrderBookUSD[usd][lst_pos[i]['token2']]['min_val'])})
 
     lst_pos = []
     # can be optimized
@@ -758,12 +773,17 @@ def calc_benef():
     #    base_out = (base_in / askPriceBASE / askPrice) * askPriceBASE2
     # return base_in, base_out-base_in, base_out*100/base_in
 
-
+nb_out = 0
+nb_out2 = 0
 def main():
-    global nb_
+    global nb_, nb_out, nb_out2
     temp_nb = nb_
     out = calc_benef()
+    nb_out += len(out)
+    nb_out2 += len(calc_benef(False))
+    print('calc', calc_benef(False))
     print('nb out ', len(out))
+    print('nb_out', nb_out, nb_out2)
 
     if out:
         for i in range(len(out)):
@@ -878,11 +898,12 @@ class Server(Thread):
         Thread.__init__(self)
 
     def run(self):
-        global dico_err, dico_tickers, OrderBookUSD, InverseOrderBookUSD, OrderBookToken
+        global dico_err, dico_tickers, OrderBookUSD, InverseOrderBookUSD, OrderBookToken, lst_token
         sleep(5)
         while True:
             dico_tickers = init_dico()
-            OrderBookUSD, InverseOrderBookUSD = initOrderBookUSD()
+            lst_token = get_token()
+            OrderBookUSD, InverseOrderBookUSD = initOrderBookUSD2()
             OrderBookToken = UpdateOrderBookToken()
             launch_scan_trade()
             # print('erreur', dico_err)
@@ -894,9 +915,9 @@ class Server(Thread):
 
 if __name__ == "__main__":
 
-    SOCKET = "wss://stream.binance.com:9443/ws/!bookTicker"
+    # SOCKET = "wss://stream.binance.com:9443/ws/!bookTicker"
 
-    ws = websocket.WebSocketApp(SOCKET, on_open=on_open, on_close=on_close, on_message=on_message)
+    # ws = websocket.WebSocketApp(SOCKET, on_open=on_open, on_close=on_close, on_message=on_message)
 
     dico_balance = {}
     total_earn = 0
