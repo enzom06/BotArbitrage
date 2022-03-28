@@ -379,12 +379,9 @@ print(min_val())
 with open('log.txt', 'a') as fic:
     fic.write('b:')
 """
+"""import requests
 
 
 
-print('LOOMBTC'[3:])
-print('LOOMBTC'[:3])
-
-
-
+"""
 
