@@ -1,2 +1,4 @@
 # BotArbitrage
- Dans un  premier temps créer pour binance puis généraliser sur d'autres platformes.
+
+Comment profiter des incohérences du marché et comment aider à une armonisation des prix ?
+Ce repo sera consacré à cette thématique.
